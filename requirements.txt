@@ -1,0 +1,16 @@
+# Core Deep Learning & Computer Vision
+torch>=2.0.0,<2.6.0
+torchvision>=0.15.0
+torchmetrics>=1.0.0
+
+# Scientific Computing & Data Processing
+numpy>=1.24.0
+Pillow>=9.5.0
+matplotlib>=3.7.0
+
+# Medical Imaging Format Handlers (DICOM & NiFTI)
+pydicom>=2.4.0
+nibabel>=5.0.0
+
+# Dataset Ingestion & Utilities
+kagglehub>=0.2.0

@@ -292,7 +292,7 @@ class DatasetLoader:
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.num_workers = num_workers
-        self.pin_memory = pin_memory
+        self.pin_memory = pin_memory and torch.cuda.is_available()
 
         self.augment = SegmentationAugmentation(img_size) if augment else None
 

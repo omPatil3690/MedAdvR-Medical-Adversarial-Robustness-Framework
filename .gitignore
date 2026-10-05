@@ -1,0 +1,108 @@
+# =====================================================================
+# 🏥 MedAdvR: .gitignore
+# =====================================================================
+
+# --- 1. Python & Bytecode ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- 2. Virtual Environments & Package Managers ---
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.uv/
+.conda/
+
+# --- 3. Datasets & Medical Imaging Data (Do not commit large binary data) ---
+data/
+data/**
+glioma/
+glioma/**
+*.dcm
+*.dicom
+*.nii
+*.nii.gz
+*.tar.gz
+*.zip
+
+# --- 4. Deep Learning Model Weights & Checkpoints ---
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.onnx
+*.safetensors
+checkpoints/
+weights/
+
+# --- 5. Training Logs, Runs & Output Images ---
+outputs/
+outputs/**
+runs/
+wandb/
+events.out.tfevents.*
+*.log
+training.log
+generator_training.log
+adv_samples/
+
+# Evaluation output images (keep directory if needed, ignore generated batch plots)
+train_eval/eval_batch_*.png
+train_eval/summary.txt
+
+# --- 6. Jupyter Notebook Checkpoints & Testing ---
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# --- 7. Secrets & API Keys ---
+.env
+.env.*
+kaggle.json
+*.pem
+*.key
+
+# --- 8. OS & Editor Specific Files ---
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# VS Code / JetBrains / Editors
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.idea/
+*.swp
+*.swo
+*~

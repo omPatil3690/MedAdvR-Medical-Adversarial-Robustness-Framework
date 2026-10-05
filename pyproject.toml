@@ -5,18 +5,13 @@ description = "MedAdvR: Medical Adversarial Robustness Framework for Medical Ima
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "matplotlib>=3.10.8",
-    "nibabel>=5.3.2",
-    "numpy>=2.2.6",
-    "pillow>=10.0.0",
-    "pydicom>=2.4.4",
-    "torch<2.6",
-    "torchmetrics>=1.9.0",
-    "torchvision>=0.20.1",
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "torchmetrics>=1.0.0",
+    "numpy>=1.24.0",
+    "pillow>=9.5.0",
+    "matplotlib>=3.7.0",
+    "pydicom>=2.4.0",
+    "nibabel>=5.0.0",
+    "kagglehub>=0.2.0",
 ]
-
-[[tool.uv.index]]
-url = "https://download.pytorch.org/whl/cu118"
-
-[[tool.uv.index]]
-url = "https://download.pytorch.org/whl/cu121"

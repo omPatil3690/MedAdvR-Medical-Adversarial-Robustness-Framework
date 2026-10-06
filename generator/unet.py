@@ -39,9 +39,6 @@ class UNet(nn.Module):
         x = torch.cat([x, x1], dim=1)
         x = self.dec1(x)
         
-        # Produce perturbation
+        # Produce perturbation delta in [-eps, eps]
         delta = torch.tanh(self.out(x))
-        
-        # [B, 3, H, W]
-        # Apply perturbation to ORIGINAL image
-        return img + self.eps * delta
+        return self.eps * delta

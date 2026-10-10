@@ -106,6 +106,7 @@ MedAdvR/
 │   ├── train.py                # Clean pretraining and adversarial retraining
 │   └── eval.py                 # Comprehensive metric evaluation (Dice, IoU, TP/FP/FN/TN)
 ├── utils/
+│   ├── LOSSES_AND_METRICS.md   # Mathematical & intuitive guide for all losses
 │   ├── gen_losses.py           # Sobel edge, FFT texture, SSIM realism functions
 │   ├── metric.py               # Batch-wise Dice and IoU metrics & loss
 │   ├── train_helper.py         # DataLoader resolvers & helpers

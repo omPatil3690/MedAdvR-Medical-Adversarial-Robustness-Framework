@@ -8,6 +8,7 @@ from generator.model import init_generator
 from main_model.train import train_model_clean, train_model_adv
 from generator.train import train_generator
 from main_model.eval import clean_evaluations
+from utils.metric import dice_score
 from utils.save import save_adv_samples
 
 
@@ -69,6 +70,7 @@ def FrameworkRun(
     )
 
     # 🔴 5. Min-Max Cycles
+    best_val_dice = 0.0
     for cycle in range(cycles):
         print(f"\n========== CYCLE {cycle} ==========")
 
@@ -84,7 +86,7 @@ def FrameworkRun(
         new_adv_samples = train_generator(
             model=model,
             generator=generator,
-            dataset=dataset,
+            dataset=train_loader,
             device=device,
             epochs=gen_epochs,
             lr=lr_gen,
@@ -112,7 +114,7 @@ def FrameworkRun(
 
         train_model_adv(
             model=model,
-            dataset=dataset,
+            dataset=train_loader,
             adv_buffer=adv_buffer,
             device=device,
             epochs=model_epochs,
@@ -120,19 +122,42 @@ def FrameworkRun(
             batch_size=batch_size
         )
 
+        # 🔵 Evaluate on validation set & save best checkpoint
+        model.eval()
+        val_dice_total = 0.0
+        val_samples = 0
+        with torch.no_grad():
+            for v_imgs, v_masks in val_loader:
+                v_imgs = v_imgs.to(device)
+                v_masks = v_masks.to(device)
+                if v_masks.dim() == 3:
+                    v_masks = v_masks.unsqueeze(1)
+                v_masks = (v_masks > 0.5).float()
+                v_preds = (torch.sigmoid(model(v_imgs)) > 0.5).float()
+                val_dice_total += dice_score(v_preds, v_masks).item() * v_imgs.size(0)
+                val_samples += v_imgs.size(0)
+        current_val_dice = val_dice_total / val_samples if val_samples > 0 else 0.0
+        print(f"[CYCLE {cycle} EVAL] Validation Dice: {current_val_dice:.4f}")
+
+        os.makedirs(save_dir, exist_ok=True)
+        if current_val_dice > best_val_dice:
+            best_val_dice = current_val_dice
+            torch.save(model.state_dict(), os.path.join(save_dir, "model_best.pth"))
+            torch.save(generator.state_dict(), os.path.join(save_dir, "generator_best.pth"))
+            print(f"🔥 [CHECKPOINT] Saved new best checkpoint (Val Dice: {best_val_dice:.4f})")
+
     # 🔴 6. Final Unbiased Benchmark Evaluation on Test Set
     print("\n[INFO] Running Final Evaluation on Reserved Test Set...")
     final_dice = clean_evaluations(model, test_loader, device, save_dir=os.path.join(save_dir, "test_eval"))
     print(f"\n[FINAL BENCHMARK] Unseen Test Set Dice: {final_dice:.4f}")
 
-    # 🔴 7. Save Checkpoints
-    os.makedirs(save_dir, exist_ok=True)
+    # 🔴 7. Save Final Checkpoints
     model_save_path = os.path.join(save_dir, "model_final.pth")
     gen_save_path = os.path.join(save_dir, "generator_final.pth")
     torch.save(model.state_dict(), model_save_path)
     torch.save(generator.state_dict(), gen_save_path)
-    print(f"[INFO] Saved model checkpoint to: {model_save_path}")
-    print(f"[INFO] Saved generator checkpoint to: {gen_save_path}")
+    print(f"[INFO] Saved model final checkpoint to: {model_save_path}")
+    print(f"[INFO] Saved generator final checkpoint to: {gen_save_path}")
 
     print("\n[INFO] Training Complete.")
     return model, generator

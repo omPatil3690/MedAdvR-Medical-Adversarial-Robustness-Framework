@@ -8,16 +8,36 @@ import torchvision.transforms as T
 from .augmentation import SegmentationAugmentation
 
 class TumorDataset(Dataset):
-    def __init__(self, root_dir, img_size , augment =None):
+    def __init__(self, root_dir, img_size, augment=None):
         self.root_dir = root_dir
         self.img_size = img_size
         self.augment = augment
 
-
-        self.images = sorted([
-            f for f in os.listdir(root_dir)
-            if f.endswith(".png") and not f.endswith("_mask.png")
-        ])
+        self.pairs = []
+        if os.path.exists(root_dir):
+            direct_images = [
+                f for f in os.listdir(root_dir)
+                if f.endswith(".png") and not f.endswith("_mask.png")
+            ]
+            if direct_images:
+                for img_name in sorted(direct_images):
+                    base = img_name.replace(".png", "")
+                    mask_name = f"{base}_mask.png"
+                    img_path = os.path.join(root_dir, img_name)
+                    mask_path = os.path.join(root_dir, mask_name)
+                    if os.path.exists(mask_path):
+                        self.pairs.append((img_path, mask_path))
+            else:
+                for r, _, files in os.walk(root_dir):
+                    for f in files:
+                        if f.endswith(".png") and not f.endswith("_mask.png"):
+                            base = f.replace(".png", "")
+                            mask_name = f"{base}_mask.png"
+                            img_path = os.path.join(r, f)
+                            mask_path = os.path.join(r, mask_name)
+                            if os.path.exists(mask_path):
+                                self.pairs.append((img_path, mask_path))
+                self.pairs.sort(key=lambda x: x[0])
 
         self.img_transform = T.Compose([
             T.Resize((img_size, img_size)),
@@ -25,15 +45,10 @@ class TumorDataset(Dataset):
         ])
 
     def __len__(self):
-        return len(self.images)
+        return len(self.pairs)
 
     def __getitem__(self, idx):
-        img_name = self.images[idx]
-        base = img_name.replace(".png", "")
-        mask_name = f"{base}_mask.png"
-
-        img_path = os.path.join(self.root_dir, img_name)
-        mask_path = os.path.join(self.root_dir, mask_name)
+        img_path, mask_path = self.pairs[idx]
 
         image = Image.open(img_path).convert("RGB")
         image = self.img_transform(image)

@@ -13,12 +13,13 @@ import numpy as np
 from PIL import Image
 
 
-def download_kaggle_dataset(target_dir="./data/glioma"):
+def download_kaggle_dataset(target_dir="./data/all_tumors"):
     """
-    Downloads the 'indk214/brain-tumor-dataset-segmentation-and-classification' dataset from Kaggle.
+    Downloads the 'indk214/brain-tumor-dataset-segmentation-and-classification' dataset from Kaggle,
+    extracting all three tumor categories: Glioma, Meningioma, and Pituitary tumor.
     """
     print("=" * 60)
-    print("📥 DOWNLOADING DATASET FROM KAGGLE")
+    print("📥 DOWNLOADING DATASET FROM KAGGLE (ALL TUMORS)")
     print("=" * 60)
     
     try:
@@ -33,27 +34,35 @@ def download_kaggle_dataset(target_dir="./data/glioma"):
     download_path = kagglehub.dataset_download('indk214/brain-tumor-dataset-segmentation-and-classification')
     print(f"[INFO] Dataset downloaded to cache: {download_path}")
 
-    # Look for DATASET/Segmentation/Glioma
-    source_segmentation = os.path.join(download_path, "DATASET", "Segmentation", "Glioma")
+    source_segmentation = os.path.join(download_path, "DATASET", "Segmentation")
     if not os.path.exists(source_segmentation):
-        # Fallback check
         source_segmentation = download_path
 
     os.makedirs(target_dir, exist_ok=True)
-    print(f"[INFO] Copying / linking files to: {target_dir}")
-    
-    # Copy or symlink files to target_dir
-    file_count = 0
-    for root, _, files in os.walk(source_segmentation):
-        for f in files:
-            if f.endswith(('.png', '.jpg', '.jpeg')):
-                src_file = os.path.join(root, f)
-                dst_file = os.path.join(target_dir, f)
-                if not os.path.exists(dst_file):
-                    shutil.copy2(src_file, dst_file)
-                file_count += 1
+    base_data = os.path.dirname(target_dir) if os.path.dirname(target_dir) else "./data"
 
-    print(f"\n✅ [SUCCESS] {file_count} image/mask files available in: {target_dir}")
+    classes = ["Glioma", "Meningioma", "Pituitary tumor"]
+    total_files = 0
+
+    for cls_name in classes:
+        cls_src = os.path.join(source_segmentation, cls_name)
+        cls_slug = cls_name.lower().replace(" ", "_")
+        cls_dst = os.path.join(base_data, cls_slug)
+        os.makedirs(cls_dst, exist_ok=True)
+
+        if os.path.exists(cls_src):
+            for f in os.listdir(cls_src):
+                if f.endswith(('.png', '.jpg', '.jpeg')):
+                    src_f = os.path.join(cls_src, f)
+                    dst_class_f = os.path.join(cls_dst, f)
+                    dst_all_f = os.path.join(target_dir, f)
+                    if not os.path.exists(dst_class_f):
+                        shutil.copy2(src_f, dst_class_f)
+                    if not os.path.exists(dst_all_f):
+                        shutil.copy2(src_f, dst_all_f)
+                    total_files += 1
+
+    print(f"\n✅ [SUCCESS] {total_files} image/mask files available in: {target_dir}")
     print(f"👉 You can now run:\n   uv run main.py --dataset_path {target_dir} --dataset_type tumor")
 
 

@@ -46,6 +46,7 @@ def FrameworkMultiTaskRun(
     save_dir="outputs_multitask",
     max_buffer_size=5000,
     tau_audit=0.45,
+    num_visual_samples=12,
 ):
     device = torch.device(device)
     os.makedirs(save_dir, exist_ok=True)
@@ -179,7 +180,7 @@ def FrameworkMultiTaskRun(
         test_loader=test_loader,
         device=device,
         save_dir=os.path.join(save_dir, "test_results"),
-        num_visual_samples=10,
+        num_visual_samples=num_visual_samples,
         tau_audit=tau_audit,
     )
 

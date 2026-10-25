@@ -1,15 +1,15 @@
 ===== MEDADVR MULTI-TASK & SEMANTIC DISCONNECT SCORECARD =====
 
-Total Test Samples Evaluated       : 32
+Total Test Samples Evaluated       : 331
 
-Clean Segmentation Dice            : 0.0519
-Attacked Segmentation Dice         : 0.0539
-Clean Segmentation IoU             : 0.0309
-Attacked Segmentation IoU          : 0.0317
+Clean Segmentation Dice            : 0.7044
+Attacked Segmentation Dice         : 0.6419
+Clean Segmentation IoU             : 0.5946
+Attacked Segmentation IoU          : 0.5326
 
-Clean Pathology Accuracy           : 34.38%
-Attacked Pathology Accuracy        : 34.38%
+Clean Pathology Accuracy           : 87.92%
+Attacked Pathology Accuracy        : 80.66%
 
-Clean Semantic Disconnect Score    : 0.5214
-Attacked Semantic Disconnect Score : 0.5224
+Clean Semantic Disconnect Score    : 0.0000
+Attacked Semantic Disconnect Score : 1.0000
 Safety Triage Interception Rate    : 100.00%

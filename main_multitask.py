@@ -36,6 +36,7 @@ def parse_args():
     parser.add_argument("--save_images", action="store_true", default=True)
     parser.add_argument("--save_dir", type=str, default="outputs_multitask")
     parser.add_argument("--max_buffer_size", type=int, default=5000)
+    parser.add_argument("--num_visual_samples", type=int, default=12, help="Number of 6-panel test sample diagnostics to export")
     return parser.parse_args()
 
 
@@ -72,6 +73,7 @@ def main():
         save_dir=args.save_dir,
         max_buffer_size=args.max_buffer_size,
         tau_audit=args.tau_audit,
+        num_visual_samples=args.num_visual_samples,
     )
 
 

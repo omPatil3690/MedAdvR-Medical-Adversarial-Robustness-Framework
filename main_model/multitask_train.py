@@ -23,6 +23,8 @@ def evaluate_multitask_epoch(model, loader, device):
     """Evaluates MultiTaskUNet on a validation or test DataLoader."""
     model.eval()
     total_loss = 0.0
+    total_seg_loss = 0.0
+    total_cls_loss = 0.0
     total_iou = 0.0
     total_dice = 0.0
     total_cls_correct = 0
@@ -41,10 +43,12 @@ def evaluate_multitask_epoch(model, loader, device):
             b_size = imgs.size(0)
             seg_logits, cls_logits, cons_score, f_seg, f_cls = model(imgs, return_latents=True)
 
-            loss, _ = multitask_defender_loss(
+            loss, loss_dict = multitask_defender_loss(
                 model, seg_logits, cls_logits, cons_score, f_seg, f_cls, masks, labels
             )
             total_loss += loss.item() * b_size
+            total_seg_loss += loss_dict.get("seg_loss", 0.0) * b_size
+            total_cls_loss += loss_dict.get("cls_loss", 0.0) * b_size
 
             preds_bin = (torch.sigmoid(seg_logits) > 0.5).float()
             total_iou += iou_score(preds_bin, masks).item() * b_size
@@ -56,10 +60,12 @@ def evaluate_multitask_epoch(model, loader, device):
             total_samples += b_size
 
     if total_samples == 0:
-        return {"loss": 0.0, "iou": 0.0, "dice": 0.0, "cls_acc": 0.0, "cons": 0.0}
+        return {"loss": 0.0, "seg_loss": 0.0, "cls_loss": 0.0, "iou": 0.0, "dice": 0.0, "cls_acc": 0.0, "cons": 0.0}
 
     return {
         "loss": total_loss / total_samples,
+        "seg_loss": total_seg_loss / total_samples,
+        "cls_loss": total_cls_loss / total_samples,
         "iou": total_iou / total_samples,
         "dice": total_dice / total_samples,
         "cls_acc": total_cls_correct / total_samples,
@@ -70,12 +76,14 @@ def evaluate_multitask_epoch(model, loader, device):
 def _train_multitask_clean_epoch(model, loader, optimizer, device):
     model.train()
     total_loss = 0.0
+    total_seg_loss = 0.0
+    total_cls_loss = 0.0
     total_iou = 0.0
     total_dice = 0.0
     total_cls_correct = 0
     total_samples = 0
 
-    for imgs, masks, labels in loader:
+    for batch_idx, (imgs, masks, labels) in enumerate(loader):
         imgs = imgs.to(device)
         masks = masks.to(device)
         labels = labels.to(device)
@@ -86,7 +94,7 @@ def _train_multitask_clean_epoch(model, loader, optimizer, device):
         b_size = imgs.size(0)
         seg_logits, cls_logits, cons_score, f_seg, f_cls = model(imgs, return_latents=True)
 
-        loss, _ = multitask_defender_loss(
+        loss, loss_dict = multitask_defender_loss(
             model, seg_logits, cls_logits, cons_score, f_seg, f_cls, masks, labels
         )
 
@@ -96,6 +104,9 @@ def _train_multitask_clean_epoch(model, loader, optimizer, device):
         optimizer.step()
 
         total_loss += loss.item() * b_size
+        total_seg_loss += loss_dict.get("seg_loss", 0.0) * b_size
+        total_cls_loss += loss_dict.get("cls_loss", 0.0) * b_size
+
         with torch.no_grad():
             preds_bin = (torch.sigmoid(seg_logits) > 0.5).float()
             total_iou += iou_score(preds_bin, masks).item() * b_size
@@ -105,8 +116,18 @@ def _train_multitask_clean_epoch(model, loader, optimizer, device):
 
         total_samples += b_size
 
+        if (batch_idx + 1) % 25 == 0 or (batch_idx + 1) == len(loader):
+            c_loss = total_loss / total_samples
+            c_seg = total_seg_loss / total_samples
+            c_cls = total_cls_loss / total_samples
+            c_dice = total_dice / total_samples
+            c_acc = (total_cls_correct / total_samples) * 100.0
+            print(f"  ├─ Batch [{batch_idx+1:2d}/{len(loader):2d}] | Loss: {c_loss:.4f} (Seg: {c_seg:.4f}, Cls: {c_cls:.4f}) | Dice: {c_dice:.4f} | Cls Acc: {c_acc:.1f}%")
+
     return {
         "loss": total_loss / max(1, total_samples),
+        "seg_loss": total_seg_loss / max(1, total_samples),
+        "cls_loss": total_cls_loss / max(1, total_samples),
         "iou": total_iou / max(1, total_samples),
         "dice": total_dice / max(1, total_samples),
         "cls_acc": total_cls_correct / max(1, total_samples),
@@ -140,14 +161,15 @@ def train_multitask_clean(model, train_loader, val_loader=None, device="cpu", ep
             scheduler.step(val_stats["loss"])
             logging.info(
                 f"Pretrain Epoch {epoch+1:02d}/{epochs} | "
-                f"Train Loss: {tr_stats['loss']:.4f} | Val Loss: {val_stats['loss']:.4f} | "
+                f"Train Loss: {tr_stats['loss']:.4f} (Seg: {tr_stats['seg_loss']:.4f}, Cls: {tr_stats['cls_loss']:.4f}) | "
+                f"Val Loss: {val_stats['loss']:.4f} (Seg: {val_stats['seg_loss']:.4f}, Cls: {val_stats['cls_loss']:.4f}) | "
                 f"Train Dice: {tr_stats['dice']:.4f} | Val Dice: {val_stats['dice']:.4f} | "
                 f"Train Cls Acc: {tr_stats['cls_acc']*100:.1f}% | Val Cls Acc: {val_stats['cls_acc']*100:.1f}%"
             )
         else:
             logging.info(
                 f"Pretrain Epoch {epoch+1:02d}/{epochs} | "
-                f"Train Loss: {tr_stats['loss']:.4f} | "
+                f"Train Loss: {tr_stats['loss']:.4f} (Seg: {tr_stats['seg_loss']:.4f}, Cls: {tr_stats['cls_loss']:.4f}) | "
                 f"Train Dice: {tr_stats['dice']:.4f} | "
                 f"Train Cls Acc: {tr_stats['cls_acc']*100:.1f}%"
             )
@@ -202,6 +224,8 @@ def train_multitask_adv(
     for epoch in range(epochs):
         model.train()
         total_loss = 0.0
+        total_seg_loss = 0.0
+        total_cls_loss = 0.0
         total_dice = 0.0
         total_cls_correct = 0
         total_gate_acc = 0
@@ -247,7 +271,7 @@ def train_multitask_adv(
             b_size = x_batch.size(0)
             seg_logits, cls_logits, cons_score, f_seg, f_cls = model(x_batch, return_latents=True)
 
-            loss, _ = multitask_defender_loss(
+            loss, loss_dict = multitask_defender_loss(
                 model=model,
                 seg_logits=seg_logits,
                 cls_logits=cls_logits,
@@ -265,6 +289,9 @@ def train_multitask_adv(
             optimizer.step()
 
             total_loss += loss.item() * b_size
+            total_seg_loss += loss_dict.get("seg_loss", 0.0) * b_size
+            total_cls_loss += loss_dict.get("cls_loss", 0.0) * b_size
+
             with torch.no_grad():
                 preds_bin = (torch.sigmoid(seg_logits) > 0.5).float()
                 total_dice += dice_score(preds_bin, m_batch).item() * b_size
@@ -275,10 +302,20 @@ def train_multitask_adv(
 
             total_samples += b_size
 
+            if (_ + 1) % 25 == 0 or (_ + 1) == num_batches:
+                cur_l = total_loss / total_samples
+                cur_s = total_seg_loss / total_samples
+                cur_c = total_cls_loss / total_samples
+                cur_d = total_dice / total_samples
+                cur_acc = (total_cls_correct / total_samples) * 100.0
+                cur_gate = (total_gate_acc / total_samples) * 100.0
+                print(f"  ├─ Batch [{_+1:2d}/{num_batches:2d}] | Loss: {cur_l:.4f} (Seg: {cur_s:.4f}, Cls: {cur_c:.4f}) | Dice: {cur_d:.4f} | Cls Acc: {cur_acc:.1f}% | Gate Acc: {cur_gate:.1f}%")
+
+        n_s = max(1, total_samples)
         print(
             f"ADV Hardening Epoch {epoch+1:02d}/{epochs} | "
-            f"Loss: {total_loss/max(1, total_samples):.4f} | "
-            f"Dice: {total_dice/max(1, total_samples):.4f} | "
-            f"Cls Acc: {(total_cls_correct/max(1, total_samples))*100:.1f}% | "
-            f"Triage Gate Acc: {(total_gate_acc/max(1, total_samples))*100:.1f}%"
+            f"Loss: {total_loss/n_s:.4f} (Seg: {total_seg_loss/n_s:.4f}, Cls: {total_cls_loss/n_s:.4f}) | "
+            f"Dice: {total_dice/n_s:.4f} | "
+            f"Cls Acc: {(total_cls_correct/n_s)*100:.1f}% | "
+            f"Triage Gate Acc: {(total_gate_acc/n_s)*100:.1f}%"
         )
